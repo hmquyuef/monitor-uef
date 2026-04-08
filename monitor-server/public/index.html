@@ -174,6 +174,11 @@
     <script>
         const socket = io();
 
+        function formatGB(bytes) {
+            if (!bytes) return '0 GB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+
         function formatUptime(seconds) {
             const days = Math.floor(seconds / (24 * 3600));
             const hrs = Math.floor((seconds % (24 * 3600)) / 3600);
@@ -244,9 +249,23 @@
                     <div class="metric-item"><span class="metric-value">${data.metrics.disk_percent}%</span>Disk</div>
                 </div>
 
-                <div style="margin: 15px 0; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span>Swap: ${Math.round(data.metrics.swap_used / 1024 / 1024 / 1024 * 100) / 100} GB</span>
+                <div style="margin: 15px 0; font-size: 0.82rem; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px;">
+                    <div style="margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                        <strong>Disk Capacity:</strong>
+                        <div style="display:flex; justify-content:space-between; margin-top:4px; opacity:0.8;">
+                            <span>Total: ${formatGB(extra.disk_total)}</span>
+                            <span>Used: ${formatGB(extra.disk_used)}</span>
+                            <span>Free: ${formatGB(extra.disk_free)}</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                        <strong>Memory:</strong>
+                        <div style="display:flex; justify-content:space-between; margin-top:4px; opacity:0.8;">
+                            <span>RAM: ${formatGB(extra.ram_used)} / ${formatGB(extra.ram_total)}</span>
+                            <span>Swap: ${formatGB(data.metrics.swap_used)}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; opacity:0.8;">
                         <span>Tasks: ${extra.total_tasks || 0}</span>
                         <span>Threads: ${extra.total_threads || 0}</span>
                     </div>

@@ -42,7 +42,13 @@ def job():
                 "total_tasks": metrics["sys"]["total_tasks"],
                 "total_threads": metrics["sys"]["total_threads"],
                 "packets_sent": metrics["network"]["packets_sent"],
-                "packets_recv": metrics["network"]["packets_recv"]
+                "packets_recv": metrics["network"]["packets_recv"],
+                "disk_total": metrics["disk"]["total"],
+                "disk_used": metrics["disk"]["used"],
+                "disk_free": metrics["disk"]["free"],
+                "ram_total": metrics["ram"]["total"],
+                "ram_used": metrics["ram"]["used"],
+                "swap_total": metrics["ram"]["swap_total"]
             }
         }
         
