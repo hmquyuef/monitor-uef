@@ -2,7 +2,7 @@ import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 from loguru import logger
 from src.config.settings import COLLECT_INTERVAL, AGENT_NAME
-from src.collectors.system_collector import collect_cpu, collect_ram
+from src.collectors.system_collector import collect_cpu, collect_ram, collect_system_info
 from src.collectors.storage_collector import collect_disk, collect_network
 from src.sender.api_sender import send_metrics
 
@@ -13,7 +13,8 @@ def job():
             "cpu": collect_cpu(),
             "ram": collect_ram(),
             "disk": collect_disk(),
-            "network": collect_network()
+            "network": collect_network(),
+            "sys": collect_system_info()
         }
         
         # Flatten metrics for database simplicity or nesting as needed
@@ -36,6 +37,10 @@ def job():
             "net_bytes_recv": metrics["network"]["bytes_recv"],
             "extra_data": {
                 "load_avg": metrics["cpu"]["load_avg"],
+                "per_cpu": metrics["cpu"]["per_cpu"],
+                "uptime": metrics["sys"]["uptime"],
+                "total_tasks": metrics["sys"]["total_tasks"],
+                "total_threads": metrics["sys"]["total_threads"],
                 "packets_sent": metrics["network"]["packets_sent"],
                 "packets_recv": metrics["network"]["packets_recv"]
             }
