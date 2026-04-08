@@ -1,0 +1,82 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: monitor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-monitor_uef}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./monitor-server/db/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - monitor-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  monitor-server:
+    build:
+      context: ./monitor-server
+      dockerfile: Dockerfile
+    container_name: monitor-server
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - monitor-net
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: monitor-pgadmin
+    restart: unless-stopped
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@monitor.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - monitor-net
+    depends_on:
+      - postgres
+
+  monitor-agent:
+    build:
+      context: ./monitor-agent
+      dockerfile: Dockerfile
+    container_name: monitor-agent-local
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SERVER_URL=http://${SERVER_IP:-localhost}:${SERVER_PORT:-3000}
+    network_mode: host
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    depends_on:
+      - monitor-server
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  monitor-net:
+    driver: bridge
