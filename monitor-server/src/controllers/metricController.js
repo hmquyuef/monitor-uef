@@ -9,7 +9,7 @@ exports.receiveMetrics = async (req, res) => {
     const { agent_name, collected_at, ...metricsData } = req.body;
 
     // 1. Tìm hoặc tự động đăng ký Agent
-    let [agent] = await Agent.findOrCreate({
+    let [agent, created] = await Agent.findOrCreate({
       where: { name: agent_name },
       defaults: { 
         api_key: req.headers.authorization?.split(' ')[1] || 'generated-key',
@@ -24,9 +24,13 @@ exports.receiveMetrics = async (req, res) => {
       last_seen: new Date()
     });
 
-    // Thông báo nếu agent quay trở lại online
-    if (previousStatus === 'offline') {
-      telegramService.sendStatus('online', agent.name);
+    // Thông báo nếu agent mới tạo hoặc quay trở lại online
+    if (created || previousStatus === 'offline') {
+      try {
+        await telegramService.sendStatus('online', agent.name);
+      } catch (err) {
+        console.error('Failed to send Telegram notification:', err.message);
+      }
     }
 
     // 3. Lưu metric vào DB
