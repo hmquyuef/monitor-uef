@@ -174,6 +174,17 @@
     <script>
         const socket = io();
 
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / (24 * 3600));
+            const hrs = Math.floor((seconds % (24 * 3600)) / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            let res = [];
+            if (days > 0) res.push(`${days}d`);
+            if (hrs > 0) res.push(`${hrs}h`);
+            if (mins > 0) res.push(`${mins}m`);
+            return res.join(' ') || '< 1m';
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -207,7 +218,6 @@
             if (resp.ok) alert('Đã lưu cấu hình thành công!');
         };
 
-        // Socket & Data logic (tương tự như cũ)
         socket.on('metric:update', (data) => {
             const container = document.getElementById('agents-container');
             let card = document.getElementById(`agent-${data.agent_id}`);
@@ -217,12 +227,38 @@
                 card.className = 'agent-card';
                 container.appendChild(card);
             }
+
+            const extra = data.metrics.extra_data || {};
+            const uptimeStr = extra.uptime ? formatUptime(extra.uptime) : 'N/A';
+            const perCpu = extra.per_cpu || [];
+            
             card.innerHTML = `
-                <h3>${data.agent_name}</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0;">${data.agent_name}</h3>
+                    <span style="font-size:0.8rem; opacity:0.6;">Uptime: ${uptimeStr}</span>
+                </div>
+                
                 <div class="metric-info">
                     <div class="metric-item"><span class="metric-value">${data.metrics.cpu_percent}%</span>CPU</div>
                     <div class="metric-item"><span class="metric-value">${data.metrics.ram_percent}%</span>RAM</div>
                     <div class="metric-item"><span class="metric-value">${data.metrics.disk_percent}%</span>Disk</div>
+                </div>
+
+                <div style="margin: 15px 0; font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>Swap: ${Math.round(data.metrics.swap_used / 1024 / 1024 / 1024 * 100) / 100} GB</span>
+                        <span>Tasks: ${extra.total_tasks || 0}</span>
+                        <span>Threads: ${extra.total_threads || 0}</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <label style="font-size:0.75rem; opacity:0.5;">Cores Usage:</label>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:5px;">
+                        ${perCpu.map((usage, i) => `
+                            <div title="Core ${i}: ${usage}%" style="width:20px; height:20px; background: rgba(99, 102, 241, ${usage/100 + 0.1}); border-radius:4px; border:1px solid rgba(255,255,255,0.1);"></div>
+                        `).join('')}
+                    </div>
                 </div>
             `;
         });

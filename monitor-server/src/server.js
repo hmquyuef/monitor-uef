@@ -38,6 +38,10 @@ io.on('connection', (socket) => {
   });
 });
 
+// Khởi chạy service theo dõi trạng thái Agent
+const agentStatusService = require('./services/agentStatusService');
+agentStatusService.init();
+
 // Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);

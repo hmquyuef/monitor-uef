@@ -1,6 +1,7 @@
 const Metric = require('../models/Metric');
 const Agent = require('../models/Agent');
 const alertService = require('../services/alertService');
+const telegramService = require('../services/telegramService');
 const sequelize = require('../config/database');
 
 exports.receiveMetrics = async (req, res) => {
@@ -17,10 +18,16 @@ exports.receiveMetrics = async (req, res) => {
     });
 
     // 2. Cập nhật trạng thái agent
+    const previousStatus = agent.status;
     await agent.update({
       status: 'online',
       last_seen: new Date()
     });
+
+    // Thông báo nếu agent quay trở lại online
+    if (previousStatus === 'offline') {
+      telegramService.sendStatus('online', agent.name);
+    }
 
     // 3. Lưu metric vào DB
     const metric = await Metric.create({

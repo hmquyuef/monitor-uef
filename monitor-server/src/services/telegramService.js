@@ -33,3 +33,20 @@ exports.sendAlert = async (message) => {
     console.error('Telegram notification error:', error.message);
   }
 };
+
+exports.sendStatus = async (status, agentName) => {
+  const emoji = status === 'online' ? '✅' : '❌';
+  const prefix = status === 'online' ? 'Agent Connected' : 'Agent Disconnected';
+  const message = `${emoji} *${prefix}*\n\nDevice: \`${agentName}\``;
+  try {
+    const currentBot = await getBot();
+    const [idResults] = await sequelize.query("SELECT value FROM system_settings WHERE key = 'telegram_chat_id'");
+    const chatId = idResults.length > 0 ? idResults[0].value : null;
+
+    if (!currentBot || !chatId) return;
+
+    await currentBot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+  } catch (error) {
+    console.error('Telegram status error:', error.message);
+  }
+};
