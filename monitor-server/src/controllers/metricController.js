@@ -74,10 +74,19 @@ exports.receiveMetrics = async (req, res) => {
 exports.getHistory = async (req, res) => {
   try {
     const { agentId } = req.params;
+    const { range = '1d' } = req.query;
+
+    const rangeMap = { '1d': 1, '7d': 7, '30d': 30 };
+    const days = rangeMap[range] || 1;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
     const history = await Metric.findAll({
-      where: { agent_id: agentId },
-      limit: 100,
-      order: [['collected_at', 'DESC']]
+      where: {
+        agent_id: agentId,
+        collected_at: { [require('sequelize').Op.gte]: since }
+      },
+      limit: 2000,
+      order: [['collected_at', 'ASC']]
     });
     res.json(history);
   } catch (error) {

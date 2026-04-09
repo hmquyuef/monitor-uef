@@ -2,58 +2,86 @@ import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 from loguru import logger
 from src.config.settings import COLLECT_INTERVAL, AGENT_NAME
-from src.collectors.system_collector import collect_cpu, collect_ram, collect_system_info
-from src.collectors.storage_collector import collect_disk, collect_network
+from src.collectors.system_collector import collect_cpu, collect_ram, collect_system_info, collect_network_speed
+from src.collectors.storage_collector import collect_disk
 from src.sender.api_sender import send_metrics
 
 def job():
     logger.info(f"--- Starting collection cycle for {AGENT_NAME} ---")
     try:
-        metrics = {
-            "cpu": collect_cpu(),
-            "ram": collect_ram(),
-            "disk": collect_disk(),
-            "network": collect_network(),
-            "sys": collect_system_info()
-        }
-        
-        # Flatten metrics for database simplicity or nesting as needed
-        # Mapping to match the database columns defined earlier
+        cpu    = collect_cpu()
+        ram    = collect_ram()
+        disk   = collect_disk()
+        net    = collect_network_speed()   # Hàm mới, đo tốc độ thực tế
+        sysinfo = collect_system_info()
+
         payload = {
-            "cpu_percent": metrics["cpu"]["percent"],
-            "cpu_cores": metrics["cpu"]["cores"],
-            "cpu_freq_mhz": metrics["cpu"]["freq_mhz"],
-            "ram_total": metrics["ram"]["total"],
-            "ram_used": metrics["ram"]["used"],
-            "ram_percent": metrics["ram"]["percent"],
-            "swap_total": metrics["ram"]["swap_total"],
-            "swap_used": metrics["ram"]["swap_used"],
-            "disk_total": metrics["disk"]["total"],
-            "disk_used": metrics["disk"]["used"],
-            "disk_percent": metrics["disk"]["percent"],
-            "disk_read_bps": metrics["disk"]["read_bytes"],
-            "disk_write_bps": metrics["disk"]["write_bytes"],
-            "net_bytes_sent": metrics["network"]["bytes_sent"],
-            "net_bytes_recv": metrics["network"]["bytes_recv"],
+            # === CPU ===
+            "cpu_percent":     cpu["percent"],
+            "cpu_cores":       cpu["logical_cores"],
+            "cpu_freq_mhz":    cpu["freq_mhz"],
+
+            # === RAM ===
+            "ram_total":       ram["total"],
+            "ram_used":        ram["used"],
+            "ram_percent":     ram["percent"],
+            "swap_total":      ram["swap_total"],
+            "swap_used":       ram["swap_used"],
+
+            # === DISK ===
+            "disk_total":      disk["total"],
+            "disk_used":       disk["used"],
+            "disk_percent":    disk["percent"],
+            "disk_read_bps":   disk["read_bytes"],
+            "disk_write_bps":  disk["write_bytes"],
+
+            # === NETWORK ===
+            "net_bytes_sent":  net["bytes_sent"],
+            "net_bytes_recv":  net["bytes_recv"],
+
+            # === EXTRA (JSONB) ===
             "extra_data": {
-                "load_avg": metrics["cpu"]["load_avg"],
-                "per_cpu": metrics["cpu"]["per_cpu"],
-                "uptime": metrics["sys"]["uptime"],
-                "total_tasks": metrics["sys"]["total_tasks"],
-                "total_threads": metrics["sys"]["total_threads"],
-                "packets_sent": metrics["network"]["packets_sent"],
-                "packets_recv": metrics["network"]["packets_recv"],
-                "disk_total": metrics["disk"]["total"],
-                "disk_used": metrics["disk"]["used"],
-                "disk_free": metrics["disk"]["free"],
-                "ram_total": metrics["ram"]["total"],
-                "ram_used": metrics["ram"]["used"],
-                "swap_total": metrics["ram"]["swap_total"]
+                # CPU Topology
+                "cpu_physical_cores":  cpu["physical_cores"],
+                "cpu_logical_cores":   cpu["logical_cores"],
+                "cpu_num_sockets":     cpu["num_sockets"],
+                "cpu_cores_per_socket":cpu["cores_per_socket"],
+                "cpu_freq_max_mhz":    cpu["freq_max_mhz"],
+                "cpu_load_avg":        cpu["load_avg"],
+                "cpu_temp_celsius":    cpu["temp_celsius"],
+
+                # Memory detail
+                "ram_free":            ram["free"],
+                "ram_total":           ram["total"],
+                "ram_used":            ram["used"],
+                "swap_total":          ram["swap_total"],
+
+                # Disk detail
+                "disk_free":           disk["free"],
+                "disk_total":          disk["total"],
+                "disk_used":           disk["used"],
+
+                # Network speed
+                "net_send_bps":        net["send_bps"],
+                "net_recv_bps":        net["recv_bps"],
+                "net_packets_sent":    net["packets_sent"],
+                "net_packets_recv":    net["packets_recv"],
+
+                # System info
+                "uptime":              sysinfo["uptime"],
+                "os":                  sysinfo["os"],
+                "os_release":          sysinfo["os_release"],
+                "os_version":          sysinfo["os_version"],
+                "hostname":            sysinfo["hostname"],
+                "machine":             sysinfo["machine"],
+                "open_sockets":        sysinfo["open_sockets"],
+                "established_conn":    sysinfo["established_conn"],
+                "listen_ports":        sysinfo["listen_ports"]
             }
         }
-        
+
         result = send_metrics(payload)
-        
+
         # Cập nhật interval động nếu server yêu cầu khác
         if result and "collect_interval" in result:
             new_interval = result["collect_interval"]
@@ -61,20 +89,19 @@ def job():
             if current_job and current_job.trigger.interval.seconds != new_interval:
                 logger.warning(f"Updating interval to {new_interval}s as requested by server")
                 scheduler.reschedule_job('main_job', trigger='interval', seconds=new_interval)
-        
+
     except Exception as e:
         logger.exception(f"Unexpected error in collection job: {str(e)}")
 
 if __name__ == "__main__":
     logger.info(f"Monitor Agent starting... (Interval: {COLLECT_INTERVAL}s)")
-    
+
     scheduler = BlockingScheduler()
-    # Thêm job với ID cố định để có thể tìm và đổi interval
     scheduler.add_job(job, 'interval', seconds=COLLECT_INTERVAL, id='main_job')
-    
+
     # Run once at startup
     job()
-    
+
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
