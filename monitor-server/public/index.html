@@ -489,15 +489,18 @@ socket.on('metric:update', data => {
         <!-- System Info -->
         <div class="metric-section">
             <div class="metric-section-title">🖥️ System Info</div>
-            <div class="metric-row"><span class="label">Distro</span>       <span class="val">${x.distro_pretty || '—'}</span></div>
-            <div class="metric-row"><span class="label">Kernel</span>       <span class="val">${x.os_release || '—'}</span></div>
-            <div class="metric-row"><span class="label">Arch</span>         <span class="val">${x.machine || '—'}</span></div>
-            <div class="metric-row"><span class="label">Hostname</span>     <span class="val">${x.hostname || '—'}</span></div>
-            <div class="metric-row"><span class="label">Primary IP</span>   <span class="val" style="color:#67e8f9;font-family:monospace">${x.primary_ip || '—'}</span></div>
+            <div class="metric-row"><span class="label">Distributor ID</span> <span class="val">${x.distro_id || '—'}</span></div>
+            <div class="metric-row"><span class="label">Description</span>    <span class="val">${x.distro_description || x.distro_pretty || '—'}</span></div>
+            <div class="metric-row"><span class="label">Release</span>        <span class="val">${x.distro_release || '—'}</span></div>
+            <div class="metric-row"><span class="label">Codename</span>       <span class="val">${x.distro_codename || '—'}</span></div>
+            <div class="metric-row"><span class="label">Kernel</span>         <span class="val">${x.os_release || '—'}</span></div>
+            <div class="metric-row"><span class="label">Arch</span>           <span class="val">${x.machine || '—'}</span></div>
+            <div class="metric-row"><span class="label">Hostname</span>       <span class="val">${x.hostname || '—'}</span></div>
+            <div class="metric-row"><span class="label">Primary IP</span>     <span class="val" style="color:#67e8f9;font-family:monospace">${x.primary_ip || '—'}</span></div>
             ${x.ip_addresses ? Object.entries(x.ip_addresses).map(([iface, ip]) =>
                 `<div class="metric-row"><span class="label" style="padding-left:12px">└ ${iface}</span><span class="val" style="font-family:monospace;color:#94a3b8">${ip}</span></div>`
             ).join('') : ''}
-            <div class="metric-row"><span class="label">Uptime</span>       <span class="val">${x.uptime ? fmtUptime(x.uptime) : '—'}</span></div>
+            <div class="metric-row"><span class="label">Uptime</span>         <span class="val">${x.uptime ? fmtUptime(x.uptime) : '—'}</span></div>
         </div>
 
         <!-- CPU Info -->

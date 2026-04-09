@@ -67,25 +67,48 @@ def collect_system_info():
     """Thu thập thông tin hệ thống: OS, distro, uptime, hostname, IP, socket mạng."""
     uptime = time.time() - psutil.boot_time()
 
-    # ── Distro (Ubuntu 22.04 / CentOS 8, ...) ──────────────────────────────
-    distro_name    = ""
-    distro_version = ""
-    distro_pretty  = ""
+    # ── Distro info (tương đương lsb_release -a) ────────────────────────────
+    distro_id          = ""   # Ubuntu
+    distro_description = ""   # Ubuntu 22.04.5 LTS
+    distro_release     = ""   # 22.04
+    distro_codename    = ""   # jammy
+    distro_pretty      = ""   # dùng để hiển thị ngắn gọn
+
     try:
-        with open("/etc/os-release", "r") as f:
-            kv = {}
-            for line in f:
-                line = line.strip()
-                if "=" in line:
-                    k, v = line.split("=", 1)
-                    kv[k] = v.strip('"')
-        distro_name    = kv.get("NAME", "")
-        distro_version = kv.get("VERSION_ID", "")
-        distro_pretty  = kv.get("PRETTY_NAME", distro_name)
+        import subprocess, re
+        result = subprocess.run(
+            ["lsb_release", "-a"], capture_output=True, text=True, timeout=3
+        )
+        for line in result.stdout.splitlines():
+            if ":" not in line:
+                continue
+            key, _, val = line.partition(":")
+            key = key.strip(); val = val.strip()
+            if   key == "Distributor ID":  distro_id          = val
+            elif key == "Description":     distro_description = val
+            elif key == "Release":         distro_release     = val
+            elif key == "Codename":        distro_codename    = val
+
+        distro_pretty = distro_description or distro_id
     except Exception:
-        distro_name    = platform.system()
-        distro_version = platform.release()
-        distro_pretty  = f"{platform.system()} {platform.release()}"
+        pass
+
+    # Fallback: đọc /etc/os-release nếu lsb_release không có
+    if not distro_pretty:
+        try:
+            with open("/etc/os-release", "r") as f:
+                kv = {}
+                for line in f:
+                    if "=" in line:
+                        k, v = line.strip().split("=", 1)
+                        kv[k] = v.strip('"')
+            distro_id          = kv.get("ID", "").capitalize()
+            distro_description = kv.get("PRETTY_NAME", "")
+            distro_release     = kv.get("VERSION_ID", "")
+            distro_codename    = kv.get("VERSION_CODENAME", "")
+            distro_pretty      = distro_description
+        except Exception:
+            distro_pretty = f"{platform.system()} {platform.release()}"
 
     # ── IP Addresses ────────────────────────────────────────────────────────
     ip_addresses = {}
@@ -119,20 +142,23 @@ def collect_system_info():
         open_sockets = established_conn = listen_ports = 0
 
     return {
-        "uptime":           round(uptime),
-        "hostname":         platform.node(),
-        "primary_ip":       primary_ip,
-        "ip_addresses":     ip_addresses,
-        "os":               platform.system(),
-        "os_release":       platform.release(),
-        "os_version":       platform.version(),
-        "distro_name":      distro_name,
-        "distro_version":   distro_version,
-        "distro_pretty":    distro_pretty,
-        "machine":          platform.machine(),
-        "open_sockets":     open_sockets,
-        "established_conn": established_conn,
-        "listen_ports":     listen_ports,
+        "uptime":              round(uptime),
+        "hostname":            platform.node(),
+        "primary_ip":          primary_ip,
+        "ip_addresses":        ip_addresses,
+        "os":                  platform.system(),
+        "os_release":          platform.release(),
+        "os_version":          platform.version(),
+        # Distro (lsb_release -a)
+        "distro_id":           distro_id,           # Ubuntu
+        "distro_description":  distro_description,  # Ubuntu 22.04.5 LTS
+        "distro_release":      distro_release,       # 22.04
+        "distro_codename":     distro_codename,      # jammy
+        "distro_pretty":       distro_pretty,        # dùng để hiển thị
+        "machine":             platform.machine(),
+        "open_sockets":        open_sockets,
+        "established_conn":    established_conn,
+        "listen_ports":        listen_ports,
     }
 
 def collect_network_speed():
