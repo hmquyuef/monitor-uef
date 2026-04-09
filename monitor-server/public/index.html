@@ -55,6 +55,7 @@
             font-weight: 700;
             background: linear-gradient(135deg, #818cf8, #c084fc);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         nav { display: flex; gap: 10px; }
@@ -459,13 +460,13 @@ socket.on('metric:update', data => {
         <div class="card-header">
             <div>
                 <div class="agent-name">${data.agent_name}</div>
-                <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">${x.hostname || ''}</div>
+                <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">${x.hostname || ''} ${x.primary_ip ? '— ' + x.primary_ip : ''}</div>
             </div>
             <span class="agent-badge badge-online">● Online</span>
         </div>
 
         <div class="sys-info-row">
-            <span class="sys-tag">🐧 ${x.os || '—'} ${x.os_release || ''}</span>
+            <span class="sys-tag">🐧 ${x.distro_pretty || (x.os + ' ' + x.os_release) || '—'}</span>
             <span class="sys-tag">🕒 Up: ${x.uptime ? fmtUptime(x.uptime) : 'N/A'}</span>
             <span class="sys-tag">🏗 ${x.machine || '—'}</span>
         </div>
@@ -483,6 +484,20 @@ socket.on('metric:update', data => {
                 <span class="gauge-value" style="color:${diskColor}">${m.disk_percent ?? '—'}%</span>
                 <div class="gauge-label">Disk</div>
             </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="metric-section">
+            <div class="metric-section-title">🖥️ System Info</div>
+            <div class="metric-row"><span class="label">Distro</span>       <span class="val">${x.distro_pretty || '—'}</span></div>
+            <div class="metric-row"><span class="label">Kernel</span>       <span class="val">${x.os_release || '—'}</span></div>
+            <div class="metric-row"><span class="label">Arch</span>         <span class="val">${x.machine || '—'}</span></div>
+            <div class="metric-row"><span class="label">Hostname</span>     <span class="val">${x.hostname || '—'}</span></div>
+            <div class="metric-row"><span class="label">Primary IP</span>   <span class="val" style="color:#67e8f9;font-family:monospace">${x.primary_ip || '—'}</span></div>
+            ${x.ip_addresses ? Object.entries(x.ip_addresses).map(([iface, ip]) =>
+                `<div class="metric-row"><span class="label" style="padding-left:12px">└ ${iface}</span><span class="val" style="font-family:monospace;color:#94a3b8">${ip}</span></div>`
+            ).join('') : ''}
+            <div class="metric-row"><span class="label">Uptime</span>       <span class="val">${x.uptime ? fmtUptime(x.uptime) : '—'}</span></div>
         </div>
 
         <!-- CPU Info -->

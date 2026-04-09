@@ -69,10 +69,15 @@ def job():
 
                 # System info
                 "uptime":              sysinfo["uptime"],
+                "hostname":            sysinfo["hostname"],
+                "primary_ip":         sysinfo["primary_ip"],
+                "ip_addresses":       sysinfo["ip_addresses"],
                 "os":                  sysinfo["os"],
                 "os_release":          sysinfo["os_release"],
                 "os_version":          sysinfo["os_version"],
-                "hostname":            sysinfo["hostname"],
+                "distro_name":        sysinfo["distro_name"],
+                "distro_version":     sysinfo["distro_version"],
+                "distro_pretty":      sysinfo["distro_pretty"],
                 "machine":             sysinfo["machine"],
                 "open_sockets":        sysinfo["open_sockets"],
                 "established_conn":    sysinfo["established_conn"],

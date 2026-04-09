@@ -64,12 +64,54 @@ def collect_ram():
     }
 
 def collect_system_info():
-    """Thu thập thông tin hệ thống: OS, uptime, hostname, số socket mạng đang mở."""
+    """Thu thập thông tin hệ thống: OS, distro, uptime, hostname, IP, socket mạng."""
     uptime = time.time() - psutil.boot_time()
 
-    # Đếm số socket mạng đang hoạt động (ESTABLISHED + LISTEN)
+    # ── Distro (Ubuntu 22.04 / CentOS 8, ...) ──────────────────────────────
+    distro_name    = ""
+    distro_version = ""
+    distro_pretty  = ""
     try:
-        connections = psutil.net_connections()
+        with open("/etc/os-release", "r") as f:
+            kv = {}
+            for line in f:
+                line = line.strip()
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    kv[k] = v.strip('"')
+        distro_name    = kv.get("NAME", "")
+        distro_version = kv.get("VERSION_ID", "")
+        distro_pretty  = kv.get("PRETTY_NAME", distro_name)
+    except Exception:
+        distro_name    = platform.system()
+        distro_version = platform.release()
+        distro_pretty  = f"{platform.system()} {platform.release()}"
+
+    # ── IP Addresses ────────────────────────────────────────────────────────
+    ip_addresses = {}
+    try:
+        # Lấy tất cả địa chỉ IP của từng interface (bỏ qua loopback)
+        for iface, addrs in psutil.net_if_addrs().items():
+            for addr in addrs:
+                # AF_INET = IPv4 (2), AF_INET6 = IPv6 (10/23)
+                if addr.family == 2 and not addr.address.startswith("127."):      # IPv4
+                    ip_addresses[iface] = addr.address
+                    break
+    except Exception:
+        pass
+
+    # Lấy IP chính (IP mà máy dùng để ra ngoài internet)
+    primary_ip = ""
+    try:
+        with sock.socket(sock.AF_INET, sock.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            primary_ip = s.getsockname()[0]
+    except Exception:
+        primary_ip = next(iter(ip_addresses.values()), "")
+
+    # ── Network Connections ─────────────────────────────────────────────────
+    try:
+        connections      = psutil.net_connections()
         open_sockets     = len(connections)
         established_conn = len([c for c in connections if c.status == "ESTABLISHED"])
         listen_ports     = len([c for c in connections if c.status == "LISTEN"])
@@ -79,13 +121,18 @@ def collect_system_info():
     return {
         "uptime":           round(uptime),
         "hostname":         platform.node(),
+        "primary_ip":       primary_ip,
+        "ip_addresses":     ip_addresses,
         "os":               platform.system(),
-        "os_version":       platform.version(),
         "os_release":       platform.release(),
+        "os_version":       platform.version(),
+        "distro_name":      distro_name,
+        "distro_version":   distro_version,
+        "distro_pretty":    distro_pretty,
         "machine":          platform.machine(),
         "open_sockets":     open_sockets,
         "established_conn": established_conn,
-        "listen_ports":     listen_ports
+        "listen_ports":     listen_ports,
     }
 
 def collect_network_speed():
