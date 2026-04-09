@@ -9,15 +9,16 @@ def send_metrics(payload):
         "Authorization": f"ApiKey {API_KEY}",
         "Content-Type": "application/json"
     }
-    
+
     # Bổ sung thông tin định danh agent
     payload["agent_name"] = AGENT_NAME
     payload["collected_at"] = datetime.datetime.utcnow().isoformat() + "Z"
 
     try:
-        with httpx.Client(timeout=10.0) as client:
+        # follow_redirects=True: tự động theo 301/302 khi Nginx redirect HTTP -> HTTPS
+        with httpx.Client(timeout=10.0, follow_redirects=True, verify=False) as client:
             response = client.post(url, json=payload, headers=headers)
-            if response.status_code == 200 or response.status_code == 201:
+            if response.status_code in (200, 201):
                 logger.success(f"Metrics sent successfully for {AGENT_NAME}")
                 return response.json().get("config", {})
             else:
